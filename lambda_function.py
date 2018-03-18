@@ -195,7 +195,7 @@ def handle_discovery_v3(request):
     }
     return response
 
-import socket
+import requests
 
 def handle_non_discovery_v3(request):
     # request_namespace = request["directive"]["header"]["namespace"]
@@ -208,21 +208,18 @@ def handle_non_discovery_v3(request):
     request_name = header.get("name", "")
     
     endpoint = directive.get("endpoint", {})
-    request_devID = endpoint.get("endpointId", "")
+    endpointId = endpoint.get("endpointId", "")
 
     if request_namespace == "Alexa.PowerController":
         if request_name == "TurnOn":
             value = "ON"
+            param = {'device_id': endpointId, 'status': '1'}
+            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/set', params=param)
         else:
             value = "OFF"
+            param = {'device_id': endpointId, 'status': '0'}
+            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/set', params=param)
         
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(("www.ai-keys.com", 55557))
-
-        s.send((request_devID + '_' + request_name).encode('utf-8'))
-
-        s.close()
-
         response = {
             "context": {
                 "properties": [
@@ -272,6 +269,12 @@ def handle_non_discovery_v3(request):
 
     elif request_namespace == "Alexa":
         if request_name == "ReportState":
+
+            param = {'device_id': endpointId}
+            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/get', params=param)
+            ret = resp.json()
+            powerState = ret.get('status', 'OFF').upper()
+
             response = {
                 "context": {
                     "properties": [
@@ -287,9 +290,9 @@ def handle_non_discovery_v3(request):
                         {
                             "namespace": "Alexa.PowerController",
                             "name": "powerState",
-                            "value": "ON",
+                            "value": powerState,
                             "timeOfSample": get_utc_timestamp(),
-                            "uncertaintyInMilliseconds": 500
+                            "uncertaintyInMilliseconds": 200
                         }
                     ]
                 },
