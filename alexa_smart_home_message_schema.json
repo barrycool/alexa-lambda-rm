@@ -2659,18 +2659,17 @@
                                                 "uniqueItems": true,
                                                 "items": {
                                                     "enum": [
-                                                        "ACTIVITY_TRIGGER",
+                                                        "LIGHT",
+                                                        "SMARTPLUG",
+                                                        "SWITCH",
                                                         "CAMERA",
                                                         "DOOR",
-                                                        "LIGHT",
-                                                        "OTHER",
-                                                        "SCENE_TRIGGER",
-                                                        "SMARTLOCK",
-                                                        "SMARTPLUG",
-														"SPEAKER",
-                                                        "SWITCH",
-                                                        "TEMPERATURE_SENSOR",
                                                         "THERMOSTAT",
+                                                        "TEMPERATURE_SENSOR",
+                                                        "SMARTLOCK",
+                                                        "SCENE_TRIGGER",
+                                                        "ACTIVITY_TRIGGER",
+                                                        "OTHER",
                                                         "TV"
                                                     ]
                                                 }

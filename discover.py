@@ -1,7 +1,15 @@
 #!/usr/bin/python3
 
+import logging
 import json
 from lambda_function import lambda_handler
+
+# Setup logger
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+st = logging.StreamHandler()
+st.setLevel(logging.INFO)
+logger.addHandler(st)
 
 discover= \
 { \

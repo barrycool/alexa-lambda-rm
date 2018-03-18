@@ -34,16 +34,33 @@ from validation import validate_message
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-#st = logging.StreamHandler()
-#st.setLevel(logging.INFO)
-#logger.addHandler(st)
+# st = logging.StreamHandler()
+# st.setLevel(logging.INFO)
+# logger.addHandler(st)
 
 # To simplify this sample Lambda, we omit validation of access tokens and retrieval of a specific
 # user's appliances. Instead, this array includes a variety of virtual appliances in v2 API syntax,
 # and will be used to demonstrate transformation between v2 appliances and v3 endpoints.
 SAMPLE_APPLIANCES = [
     {
-        "applianceId": "endpoint-001",
+        "applianceId": "switch-001",
+        "manufacturerName": "Sample Manufacturer",
+        "modelName": "Smart Switch",
+        "version": "1",
+        "friendlyName": "switch",
+        "friendlyDescription": "switch that can only be turned on/off",
+        "isReachable": False,
+        "actions": [
+            "turnOn",
+            "turnOff"
+        ],
+        "additionalApplianceDetails": {
+            "detail1": "For simplicity, this is the only appliance",
+            "detail2": "that has some values in the additionalApplianceDetails"
+        }
+    },
+    {
+        "applianceId": "tv-001",
         "manufacturerName": "Sample Manufacturer",
         "modelName": "Smart TV",
         "version": "1",
@@ -178,15 +195,33 @@ def handle_discovery_v3(request):
     }
     return response
 
+import socket
+
 def handle_non_discovery_v3(request):
-    request_namespace = request["directive"]["header"]["namespace"]
-    request_name = request["directive"]["header"]["name"]
+    # request_namespace = request["directive"]["header"]["namespace"]
+    # request_name = request["directive"]["header"]["name"]
+
+    directive = request.get("directive", {})
+
+    header = directive.get("header", {})
+    request_namespace = header.get("namespace", "")
+    request_name = header.get("name", "")
+    
+    endpoint = directive.get("endpoint", {})
+    request_devID = endpoint.get("endpointId", "")
 
     if request_namespace == "Alexa.PowerController":
         if request_name == "TurnOn":
             value = "ON"
         else:
             value = "OFF"
+        
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect(("www.ai-keys.com", 55557))
+
+        s.send((request_devID + '_' + request_name).encode('utf-8'))
+
+        s.close()
 
         response = {
             "context": {
@@ -229,6 +264,49 @@ def handle_non_discovery_v3(request):
                         "name": "AcceptGrant.Response",
                         "payloadVersion": "3",
                         "messageId": "5f8a426e-01e4-4cc9-8b79-65f8bd0fd8a4"
+                    },
+                    "payload": {}
+                }
+            }
+            return response
+
+    elif request_namespace == "Alexa":
+        if request_name == "ReportState":
+            response = {
+                "context": {
+                    "properties": [
+                        {
+                            "namespace": "Alexa.EndpointHealth",
+                            "name": "connectivity",
+                            "value": {
+                                "value": "OK"
+                                },
+                            "timeOfSample": get_utc_timestamp(),
+                            "uncertaintyInMilliseconds": 200
+                        },
+                        {
+                            "namespace": "Alexa.PowerController",
+                            "name": "powerState",
+                            "value": "ON",
+                            "timeOfSample": get_utc_timestamp(),
+                            "uncertaintyInMilliseconds": 500
+                        }
+                    ]
+                },
+                "event": {
+                    "header": {
+                        "namespace": "Alexa",
+                        "name": "StateReport",
+                        "payloadVersion": "3",
+                        "messageId": get_uuid(),
+                        "correlationToken": request["directive"]["header"]["correlationToken"]
+                    },
+                    "endpoint": {
+                        "scope": {
+                            "type": "BearerToken",
+                            "token": "access-token-from-Amazon"
+                            },
+                        "endpointId": request["directive"]["endpoint"]["endpointId"]
                     },
                     "payload": {}
                 }
@@ -293,8 +371,8 @@ def get_capabilities_from_v2_appliance(appliance):
                     "supported": [
                         { "name": "powerState" }
                     ],
-                    "proactivelyReported": True,
-                    "retrievable": True
+                    "proactivelyReported": False,
+                    "retrievable": False
                 }
             }
         ]
