@@ -30,6 +30,11 @@ import uuid
 # Imports for v3 validation
 from validation import validate_message
 
+import sys
+sys.path.append(r"./third-party-lib")
+
+import requests
+
 # Setup logger
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -44,12 +49,12 @@ logger.setLevel(logging.INFO)
 SAMPLE_APPLIANCES = [
     {
         "applianceId": "switch-001",
-        "manufacturerName": "Sample Manufacturer",
+        "manufacturerName": "AI-keys",
         "modelName": "Smart Switch",
         "version": "1",
-        "friendlyName": "switch",
+        "friendlyName": "barry switch",
         "friendlyDescription": "switch that can only be turned on/off",
-        "isReachable": False,
+        "isReachable": True,
         "actions": [
             "turnOn",
             "turnOff"
@@ -61,7 +66,7 @@ SAMPLE_APPLIANCES = [
     },
     {
         "applianceId": "tv-001",
-        "manufacturerName": "Sample Manufacturer",
+        "manufacturerName": "Ai-keys",
         "modelName": "Smart TV",
         "version": "1",
         "friendlyName": "TV",
@@ -194,8 +199,6 @@ def handle_discovery_v3(request):
         }
     }
     return response
-
-import requests
 
 def handle_non_discovery_v3(request):
     # request_namespace = request["directive"]["header"]["namespace"]
@@ -374,8 +377,8 @@ def get_capabilities_from_v2_appliance(appliance):
                     "supported": [
                         { "name": "powerState" }
                     ],
-                    "proactivelyReported": False,
-                    "retrievable": False
+                    "proactivelyReported": True,
+                    "retrievable": True
                 }
             }
         ]
