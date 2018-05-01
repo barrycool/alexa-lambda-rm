@@ -19,7 +19,7 @@ powerCtrl = \
         "detail1": "For simplicity, this is the only appliance", \
         "detail2": "that has some values in the additionalApplianceDetails" \
       }, \
-      "endpointId": "tv-001", \
+      "endpointId": "2c3ae810eddd", \
       "scope": { \
         "token": "7b59bdad4683b25123d052d4fde2b2930a56c536", \
         "type": "BearerToken" \

@@ -48,30 +48,13 @@ logger.setLevel(logging.INFO)
 # and will be used to demonstrate transformation between v2 appliances and v3 endpoints.
 SAMPLE_APPLIANCES = [
     {
-        "applianceId": "switch-001",
+        "applianceId": "plug-0001",
         "manufacturerName": "AI-keys",
-        "modelName": "Smart Switch",
+        "modelName": "Smart Plug",
         "version": "1",
-        "friendlyName": "barry switch",
+        "friendlyName": "barry plug",
         "friendlyDescription": "switch that can only be turned on/off",
         "isReachable": True,
-        "actions": [
-            "turnOn",
-            "turnOff"
-        ],
-        "additionalApplianceDetails": {
-            "detail1": "For simplicity, this is the only appliance",
-            "detail2": "that has some values in the additionalApplianceDetails"
-        }
-    },
-    {
-        "applianceId": "tv-001",
-        "manufacturerName": "Ai-keys",
-        "modelName": "Smart TV",
-        "version": "1",
-        "friendlyName": "TV",
-        "friendlyDescription": "001 TV that can only be turned on/off",
-        "isReachable": False,
         "actions": [
             "turnOn",
             "turnOff"
@@ -182,8 +165,51 @@ def get_uuid():
 # v3 handlers
 def handle_discovery_v3(request):
     endpoints = []
-    for appliance in SAMPLE_APPLIANCES:
-        endpoints.append(get_endpoint_from_v2_appliance(appliance))
+#    for appliance in SAMPLE_APPLIANCES:
+#        endpoints.append(get_endpoint_from_v2_appliance(appliance))
+
+    directive = request.get("directive", {})
+
+    header = directive.get("header", {})
+    request_namespace = header.get("namespace", "")
+    request_name = header.get("name", "")
+    
+    payload = directive.get("payload", {})
+    scope = payload.get("scope", {})
+    token = scope.get("token", "")
+
+    param = {'name_space': request_namespace, 'name': request_name, 'token': token}
+    resp = requests.post('http://www.ai-keys.com:8080/smartdevice_cloud_service/mng', 
+            data=json.dumps(param))
+
+    logger.info(resp.text)
+    resp_json = json.loads(resp.text) 
+    devices = resp_json.get("devices", {})
+
+    for device in devices:
+        device_sample = {
+                "applianceId": "plug-0001",
+                "manufacturerName": "AI-keys",
+                "modelName": "Smart Plug",
+                "version": "1",
+                "friendlyName": "barry plug",
+                "friendlyDescription": "switch that can only be turned on/off",
+                "isReachable": True,
+                "actions": [
+                    "turnOn",
+                    "turnOff"
+                    ],
+                "additionalApplianceDetails": {
+                    "detail1": "For simplicity, this is the only appliance",
+                    "detail2": "that has some values in the additionalApplianceDetails"
+                    }
+                }
+
+        device_sample["applianceId"] = device.get("deviceId", "")
+        device_sample["manufacturerName"] = device.get("manufactureName", "AI-keys")
+        device_sample["modelName"] = device.get("deviceType", "")
+        device_sample["friendlyName"] = device.get("firendlyName", "")
+        endpoints.append(get_endpoint_from_v2_appliance(device_sample))
 
     response = {
         "event": {
@@ -212,28 +238,48 @@ def handle_non_discovery_v3(request):
     
     endpoint = directive.get("endpoint", {})
     endpointId = endpoint.get("endpointId", "")
+    scope = endpoint.get("scope", {})
+    token = scope.get("token", "")
+
+    powerStateValue = ""
+    connectivityValue = ""
 
     if request_namespace == "Alexa.PowerController":
-        if request_name == "TurnOn":
-            value = "ON"
-            param = {'device_id': endpointId, 'status': '1'}
-            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/set', params=param)
-        else:
-            value = "OFF"
-            param = {'device_id': endpointId, 'status': '0'}
-            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/set', params=param)
-        
+        param = {'name_space': request_namespace, 'name': request_name, 'deviceId': endpointId, 'token': token}
+        resp = requests.post('http://www.ai-keys.com:8080/smartdevice_cloud_service/ctrl', 
+                data=json.dumps(param))
+
+        resp_json = json.loads(resp.text) 
+        pros = resp_json.get("properties", "")
+
+        for pro in pros:
+            name_space = pro.get('name_space', '') 
+            if (name_space == 'Alexa.PowerController'):
+                powerStateValue = pro.get("value", "")
+            elif (name_space == 'Alexa.EndpointHealth'):
+                valueValue = pro.get("value", {})
+                connectivityValue = valueValue.get("value", "")
+
         response = {
             "context": {
                 "properties": [
                     {
                         "namespace": "Alexa.PowerController",
                         "name": "powerState",
-                        "value": value,
+                        "value": powerStateValue,
                         "timeOfSample": get_utc_timestamp(),
-                        "uncertaintyInMilliseconds": 500
-                    }
-                ]
+                        "uncertaintyInMilliseconds": 200
+                    },
+                    {
+                        "namespace": "Alexa.EndpointHealth",
+                        "name": "connectivity",
+                        "value": {
+                            "value": connectivityValue
+                            },
+                        "timeOfSample": get_utc_timestamp(),
+                        "uncertaintyInMilliseconds": 200
+                        }
+                    ]
             },
             "event": {
                 "header": {
@@ -273,10 +319,22 @@ def handle_non_discovery_v3(request):
     elif request_namespace == "Alexa":
         if request_name == "ReportState":
 
-            param = {'device_id': endpointId}
-            resp = requests.get('http://www.ai-keys.com:8080/smartdevice_cloud_service/get', params=param)
-            ret = resp.json()
-            powerState = ret.get('status', 'OFF').upper()
+            param = {'name_space': request_namespace, 'name': request_name, 'deviceId': endpointId, 'token': token}
+            resp = requests.post('http://www.ai-keys.com:8080/smartdevice_cloud_service/ctrl', 
+                    data=json.dumps(param))
+
+            logger.info(resp.text)
+
+            resp_json = json.loads(resp.text) 
+            pros = resp_json.get("properties", "")
+
+            for pro in pros:
+                name_space = pro.get('name_space', '') 
+                if (name_space == 'Alexa.PowerController'):
+                    powerStateValue = pro.get("value", "")
+                elif (name_space == 'Alexa.EndpointHealth'):
+                    valueValue = pro.get("value", "")
+                    connectivityValue = valueValue.get("value", "")
 
             response = {
                 "context": {
@@ -285,7 +343,7 @@ def handle_non_discovery_v3(request):
                             "namespace": "Alexa.EndpointHealth",
                             "name": "connectivity",
                             "value": {
-                                "value": "OK"
+                                "value": connectivityValue
                                 },
                             "timeOfSample": get_utc_timestamp(),
                             "uncertaintyInMilliseconds": 200
@@ -293,7 +351,7 @@ def handle_non_discovery_v3(request):
                         {
                             "namespace": "Alexa.PowerController",
                             "name": "powerState",
-                            "value": powerState,
+                            "value": powerStateValue,
                             "timeOfSample": get_utc_timestamp(),
                             "uncertaintyInMilliseconds": 200
                         }
@@ -354,6 +412,7 @@ def get_endpoint_by_endpoint_id(endpoint_id):
 def get_display_categories_from_v2_appliance(appliance):
     model_name = appliance["modelName"]
     if model_name == "Smart Switch": displayCategories = ["SWITCH"]
+    elif model_name == "SMARTPLUG": displayCategories = ["SMARTPLUG"]
     elif model_name == "Smart Light": displayCategories = ["LIGHT"]
     elif model_name == "Smart White Light": displayCategories = ["LIGHT"]
     elif model_name == "Smart Thermostat": displayCategories = ["THERMOSTAT"]
@@ -368,6 +427,21 @@ def get_display_categories_from_v2_appliance(appliance):
 def get_capabilities_from_v2_appliance(appliance):
     model_name = appliance["modelName"]
     if model_name == 'Smart Switch':
+        capabilities = [
+            {
+                "type": "AlexaInterface",
+                "interface": "Alexa.PowerController",
+                "version": "3",
+                "properties": {
+                    "supported": [
+                        { "name": "powerState" }
+                    ],
+                    "proactivelyReported": True,
+                    "retrievable": True
+                }
+            }
+        ]
+    elif model_name == 'SMARTPLUG':
         capabilities = [
             {
                 "type": "AlexaInterface",

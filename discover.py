@@ -23,7 +23,7 @@ discover= \
         "payload": { \
             "scope": { \
                 "type": "BearerToken", \
-                "token": "access-token-from-skill" \
+                "token": "5828ffa66b2dfcd6116990bb55189eac287389fd" \
             } \
         } \
     } \

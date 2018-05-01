@@ -18,7 +18,7 @@ powerCtrl = {
                 "detail1": "For simplicity, this is the only appliance",
                 "detail2": "that has some values in the additionalApplianceDetails"
             },
-            "endpointId": "switch-001",
+            "endpointId": "2c3ae810eddd",
             "scope": {
                 "token": "b1e0fb5235f6a046054edcd029f2d6b54223d279",
                 "type": "BearerToken"
